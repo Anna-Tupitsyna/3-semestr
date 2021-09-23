@@ -1,5 +1,5 @@
 1. Исходные данные:
-программа, в цикле 2 миллиона увеличивающая некоторую переменную на 1.
+программа, в цикле 2 миллиона раз увеличивающая некоторую переменную на 1.
 #include <iostream>
 #include <cstdlib>
 #include <omp.h>
@@ -41,3 +41,4 @@ int main() {
    cout<<"Time: "<<omp_get_wtime()-t<<endl;
    return EXIT_SUCCESS;
 }
+
