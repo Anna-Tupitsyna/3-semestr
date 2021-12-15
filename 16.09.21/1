@@ -13,7 +13,7 @@ int main() {
    }
    cout<<"Sum: "<<sum<<endl;
    cout<<"Time: "<<omp_get_wtime()-t<<endl;
-   return EXIT_SUCCESS;
+   return 0;
 }
 
 2. Параллельная программа
@@ -39,6 +39,6 @@ int main() {
    }
    cout<<"Sum: "<<sum<<endl;
    cout<<"Time: "<<omp_get_wtime()-t<<endl;
-   return EXIT_SUCCESS;
+   return 0;
 }
 
