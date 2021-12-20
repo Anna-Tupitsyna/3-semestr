@@ -1,0 +1,91 @@
+#include <iostream>
+#include <deque>
+#include <mutex>
+#include <initializer_list>
+#include <thread>
+using namespace std;
+mutex deque_mutex;
+class Safe_Deque:public deque<int> {
+	deque<int> Deque;
+public:
+	Safe_Deque(deque<int>& ordinary_deque) {
+		for (int N:ordinary_deque) {
+			Deque.push_back(N);
+		}
+	}
+	bool empty() const {
+		lock_guard<mutex> guard(deque_mutex);
+		return Deque.empty();
+	}
+	size_t size() const {
+		lock_guard<mutex> guard(deque_mutex);
+		return Deque.size();
+	}
+	size_t max_size() const {
+		lock_guard<mutex> guard(deque_mutex);
+		return Deque.max_size();
+	}
+  void push_front(const int val) {
+		lock_guard<mutex> guard(deque_mutex);
+		Deque.push_front(val);
+	}
+	void push_back(const int k) {
+		lock_guard<mutex> guard(deque_mutex);
+		Deque.push_back(k);
+	}
+	int front() {
+		lock_guard<mutex> guard(deque_mutex);
+		return Deque.front();
+	}
+	int back() {
+		lock_guard<mutex> guard(deque_mutex);
+		Deque.back();
+	}
+  const int& operator[] (int k) const {
+		lock_guard<mutex> guard(deque_mutex);
+		return Deque[k];
+	}
+	int& operator[] (int k) {
+		lock_guard<mutex> guard(deque_mutex);
+		return Deque[k];
+	}
+};
+void add_deque(deque<int>& Deque, int N) {
+	Deque.push_back(N);
+}
+void add_safe_deque(add_deque& Deque, int N) {
+	Deque.push_back(N);
+}
+int main() {
+	deque<int> ordinary_deque={0}; 
+	Safe_deque safe_deque(ordinary_deque); 
+	thread* thread_array=new thread[5];
+	int k=0;
+	for (int i=0; i<10; i++) {
+		if ((i+1)%2==0) {
+			thread_array[k]=thread(add_deque, ref(not_safe_deque), i); 
+			k++;
+		}
+	}
+	for (int i=0; i<k; ++i) {
+		thread_array[i].join();
+	}
+	for (int i=0; i<ordinary_deque.size(); ++i) {
+		cout <<"not safe deque "<< ordinary_deque[i]<<endl;
+  } 
+  thread* thread_array_b=new thread[5]; 
+	k=0;
+	for (int i=0; i<10; i++) {
+		if ((i+1)%2==0) {
+			thread_array_b[k]=thread(add_safe_deque, ref(safe_deque), i); 
+			k++;
+		}
+	}
+	for (int i=0; i<k; ++i) {
+		thread_array_b[i].join();
+	}
+	for (int i=0; i<safe_deque.size(); ++i) {
+		cout<<"safe deque "<<safe_deque[i]<<endl;
+  }
+	return 0;
+}
