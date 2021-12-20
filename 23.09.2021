@@ -1,0 +1,78 @@
+#include <iostream>
+#include <chrono>
+#include <functional>
+#include <thread>
+#include <algorithm>
+#include <vector>
+using namespace std;
+long s(long a, long b, long& res);
+long s(int k, long a, long b, long& res) {
+	for (long i=a; i<b; i++) {
+		res=res+i;
+		res=res+i%k;
+	}
+	return res;
+}
+struct Sum {
+	void operator()(long a, long b, long& res) {}
+	void operator()(int k, long a, long b, long& res) {
+		res=s(a, b, res);
+		res=s(k, a, b, res);
+	}
+};
+class Time {
+private:
+	using clock_t=std::chrono::high_resolution_clock;
+	using seconds_t=std::chrono::duration<double, std::ratio<1>;
+	std::chrono::time_point<clock_t> timepoint;
+public:
+	Time(): timepoint(clock_t::now()) {
+	}
+	void reset() {
+		timepoint=clock_t::now();
+	}
+	double estimated() const {
+		return std::chrono::duration_cast<seconds_t>(clock_t::now()-timepoint).count();
+	}
+};
+long parallel_sum(long x, long y, long fin) {};
+long parallel_sum(int k, long x, long y, long A) {
+	long long const l=y-x+1;
+	if (!l) return A;
+	long long const min_per_thread=20;
+	long long const max_threads=(l+min_per_thread-1)/ min_per_thread;
+	long long const hardware_threads=thread::hardware_concurrency();
+	long long const N=min(hardware_threads!=0 ? hardware_threads : 2, max_threads);
+	long long const block_size=l/N;
+	vector<long> result(N);
+	vector<thread> threads(N-1);
+	long block_x=x;
+	for (long long i=0; i<N; i++) {
+		long block_y=block_x;
+		for (long long i=0; i<block_size; i++) {
+			++block_y;
+		}
+		threads[i]=thread(Sum(), block_x, block_y, ref(result[i]));
+		threads[i]=thread(Sum(), k, block_x, block_y, ref(result[i]));
+		block_x=block_y+1;
+	}
+	Sum()(block_x, y, result[N-1]);
+	Sum()(k, block_x, y, result[N-1]);
+	for_each(threads.begin(), threads.end(), mem_fn(&thread::join));
+	for (long long i=0; i<N; ++i) {
+		A=A+result[i];
+	}
+	return A;
+}
+int main() {
+	Time t;
+	long N=1000000;
+	int k=5;
+	long result=0;
+	result=parallel_sum(1, N, result);
+	result=parallel_sum(k, 1, N, result);
+	cout<<result<<endl;
+	cout<<"Time: "<<t.estimated(); 
+	cout<<"Time: "<<t.estimated(); 
+	return 0;
+}
