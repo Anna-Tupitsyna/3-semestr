@@ -35,7 +35,7 @@ public:
 		return std::chrono::duration_cast<seconds_t>(clock_t::now()-timepoint).count();
 	}
 };
-long parallel_sum(long x, long y, long fin) {};
+long parallel_sum(long x, long y, long init) {};
 long parallel_sum(int k, long x, long y, long A) {
 	long long const l=y-x+1;
 	if (!l) return A;
