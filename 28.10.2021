@@ -1,0 +1,69 @@
+#include <thread>
+#include <iostream>
+#include <future>
+#include <chrono>
+using namespace std;
+int32_t epoll_loop(poller_t n, int32_t ms) {
+	assert(n);
+	if(ms<0)ms=0;
+	uint64_t sleep_ms;
+	uint64_t timeout=GetSystemMs64()+(uint64_t)ms;
+	uint64_t current_tick;
+	uint32_t read_event=EV_IN | EPOLLRDHUP | EPOLLERR | EPOLLHUP;
+	int32_t notify=0;
+	do{
+
+        if(!dlist_empty(&n->connecting))
+	    {
+	        //check timeout connecting
+	        uint64_t l_now=GetSystemMs64();
+            dlist_check_remove(&n->connecting,check_connect_timeout,(void*)&l_now);
+	    }
+        if(!is_active_empty(n))
+        {
+            struct dlist *actived=get_active_list(n);
+            n->actived_index=(n->actived_index+1)%2;
+            socket_t s;
+            while((s=(socket_t)dlist_pop(actived))!=NULL)
+            {
+                if(Process(s))
+                    putin_active(n,(struct dnode*)s);
+            }
+        }
+		current_tick=GetSystemMs64();
+        if(is_active_empty(n))
+			sleep_ms=timeout>current_tick ? timeout-current_tick:0;
+		else
+			sleep_ms=0;
+		notify=0;
+        int32_t nfds=_epoll_wait(n->poller_fd, n->events, MAX_SOCKET, (uint32_t)sleep_ms);
+		if(nfds<0)
+			return -1;
+		int32_t i;
+		for(i=0 ; i<nfds ; ++i) {
+			if(n->events[i].data.fd==n->pipe_reader) {
+				char buf[1];
+				read(n->pipe_reader,buf,1);
+				notify=1;
+			}else{
+				socket_t sock=(socket_t)n->events[i].data.ptr;
+				if(sock) {
+					if(sock->socket_type==CONNECT){
+						process_connect(sock);
+					}
+					else if(sock->socket_type==LISTEN){
+						process_accept(sock);
+					}
+					else{
+						if(n->events[i].events & read_event)
+							on_read_active(sock);
+						if(n->events[i].events & EPOLLOUT)
+							on_write_active(sock);
+					}
+				}
+			}
+		}
+		current_tick=GetSystemMs64();
+	}while(notify==0 && timeout>current_tick);
+	return 0;
+}
